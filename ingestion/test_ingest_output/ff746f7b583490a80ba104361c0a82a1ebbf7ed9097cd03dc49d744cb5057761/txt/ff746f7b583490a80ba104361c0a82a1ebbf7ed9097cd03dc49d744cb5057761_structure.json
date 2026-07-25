@@ -1,0 +1,30 @@
+[
+  {
+    "block_idx": 0,
+    "level": 1
+  },
+  {
+    "block_idx": 1,
+    "level": 2
+  },
+  {
+    "block_idx": 2,
+    "level": 3
+  },
+  {
+    "block_idx": 3,
+    "level": 3
+  },
+  {
+    "block_idx": 4,
+    "level": 3
+  },
+  {
+    "block_idx": 5,
+    "level": 4
+  },
+  {
+    "block_idx": 6,
+    "level": 4
+  }
+]

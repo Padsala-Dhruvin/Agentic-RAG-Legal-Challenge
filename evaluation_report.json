@@ -1,0 +1,69 @@
+{
+  "total_questions": 5,
+  "submission_file": "submission.json",
+  "architecture": "Legal Hybrid RAG (BM25 + TF-IDF RRF + Reranker + Deterministic Bypass + Dual-Mode Synthesis)",
+  "sample_answers": [
+    {
+      "question_id": "q_sample_001_date",
+      "answer": "The Date of Issue of the document in case CFI 057/2025 is February 2, 2026, as stated in the title page of the document. \n\nSupporting reasoning: This information is explicitly mentioned in the title page excerpt of the document. \n\n[Citation: [Doc: 1b446e196b4d1752241c8ff689a31ea705e98ad0c16b9d343c303664f72b64a1, Page: 1]]",
+      "telemetry": {
+        "timing": {
+          "ttft_ms": 4677.81,
+          "tpot_ms": 0.0,
+          "total_time_ms": 4677.83
+        },
+        "retrieval": {
+          "retrieved_chunk_pages": [
+            {
+              "doc_id": "1b446e196b4d1752241c8ff689a31ea705e98ad0c16b9d343c303664f72b64a1",
+              "page_numbers": [
+                1,
+                2,
+                3
+              ]
+            }
+          ]
+        },
+        "usage": {
+          "input_tokens": 126,
+          "output_tokens": 88
+        },
+        "model_name": "gpt-4o-mini"
+      }
+    },
+    {
+      "question_id": "q_sample_002_bool",
+      "answer": "No, cases SCT 295/2025 and SCT 514/2025 do not involve any of the same legal entities. \n\nIn case SCT 295/2025, the claimant is Olexa and the defendant is Odon [Doc: 09660f78c26cd56c08c7253ed21ba01fb246092f482ccd8acd8e6f9b6fd2d917, Page: 1]. In case SCT 514/2025, the claimant is Okpara and the defendant is Oralee [Doc: 6306079a16b1dec85690f75c715cdbd78b0685a3e19ee30250d481bc32f2e29a, Page: 1]. Since the parties involved in both cases are different, there are no overlapping legal entities.",
+      "telemetry": {
+        "timing": {
+          "ttft_ms": 3078.49,
+          "tpot_ms": 0.0,
+          "total_time_ms": 3078.49
+        },
+        "retrieval": {
+          "retrieved_chunk_pages": [
+            {
+              "doc_id": "3a574fc4f0baa5ec7ff0dcc822d7c55e4f9c493c24addc217c8df3d848c16fa5",
+              "page_numbers": [
+                1,
+                2,
+                3
+              ]
+            },
+            {
+              "doc_id": "6306079a16b1dec85690f75c715cdbd78b0685a3e19ee30250d481bc32f2e29a",
+              "page_numbers": [
+                1
+              ]
+            }
+          ]
+        },
+        "usage": {
+          "input_tokens": 128,
+          "output_tokens": 130
+        },
+        "model_name": "gpt-4o-mini"
+      }
+    }
+  ]
+}

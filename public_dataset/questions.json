@@ -1,0 +1,29 @@
+{
+  "questions": [
+    {
+      "id": "q_sample_001_date",
+      "question": "What is the Date of Issue of the document in case CFI 057/2025?",
+      "answer_type": "date"
+    },
+    {
+      "id": "q_sample_002_bool",
+      "question": "Do cases SCT 295/2025 and SCT 514/2025 involve any of the same legal entities?",
+      "answer_type": "boolean"
+    },
+    {
+      "id": "q_sample_003_freetext",
+      "question": "What kind of liability do Partners have under Article 28(1) of the General Partnership Law 2004?",
+      "answer_type": "free_text"
+    },
+    {
+      "id": "q_sample_004_number",
+      "question": "Under Article 14(1) of the Employment Law 2019, within how many days must an employer provide a written employment contract to an employee?",
+      "answer_type": "number"
+    },
+    {
+      "id": "q_sample_005_name",
+      "question": "Who is the presiding judge named on the title page of CA 005/2025?",
+      "answer_type": "name"
+    }
+  ]
+}

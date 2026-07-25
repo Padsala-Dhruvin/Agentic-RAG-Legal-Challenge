@@ -1,0 +1,25 @@
+[project]
+name = "agentic-rag-legal-challenge"
+version = "0.1.0"
+description = "Legal-domain Hybrid RAG system for the Agentic RAG Legal Challenge"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "python-dotenv>=1.0.0",
+    "requests>=2.28.0",
+    "openai>=1.0.0",
+    "tqdm>=4.66.0",
+    "pypdf>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["arlc*", "ingestion*", "retrieval*"]

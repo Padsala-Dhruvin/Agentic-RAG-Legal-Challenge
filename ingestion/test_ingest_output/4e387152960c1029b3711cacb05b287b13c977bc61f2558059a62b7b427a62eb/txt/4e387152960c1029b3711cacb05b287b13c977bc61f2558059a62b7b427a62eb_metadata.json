@@ -1,0 +1,69 @@
+{
+  "doc_type": "law",
+  "official_title": "Trust Law",
+  "short_title": "Trust Law",
+  "law_number": 4,
+  "official_citation": "DIFC Law No. 4 of 2018",
+  "official_citation_normalized": "difc law no 4 of 2018",
+  "alias_keys": [
+    "trust law",
+    "difc trust law",
+    "trust law 2018"
+  ],
+  "article_index": {
+    "Article 16A": [
+      6
+    ],
+    "Articles 23 to 28": [
+      9
+    ],
+    "Articles 24 to 27": [
+      10
+    ],
+    "Articles 31, 32 and Schedule 2": [
+      12
+    ]
+  },
+  "section_heading_index": {
+    "PART 1: GENERAL": [
+      1
+    ],
+    "PART 2: CHOICE OF GOVERNING LAW; PLACE OF ADMINISTRATION": [
+      3
+    ],
+    "PART 3: JUDICIAL AND NON JUDICIAL PROCEEDINGS": [
+      8
+    ],
+    "PART 4: CREATION, VALIDITY AND MODIFICATION OF A DIFC TRUST": [
+      14
+    ],
+    "PART 5: THE BENEFICIARIES OF A DIFC TRUST": [
+      21
+    ],
+    "PART 6: PROTECTIVE TRUSTS AND CREDITORS’ CLAIMS": [
+      23
+    ],
+    "PART 7: OFFICE OF TRUSTEE": [
+      25
+    ],
+    "PART 8: DUTIES AND POWERS OF TRUSTEES": [
+      31
+    ],
+    "PART 9: LIABILITY OF TRUSTEES AND RIGHTS OF PERSONS DEALING WITH A TRUSTEE": [
+      38
+    ],
+    "PART 10: RESERVED AND RESTRICTED POWERS AND INTERESTS": [
+      42
+    ],
+    "PART 11: PROVISIONS APPLICABLE TO A FOREIGN TRUST": [
+      45
+    ],
+    "SCHEDULE 1 INTERPRETATION": [
+      46
+    ],
+    "SCHEDULE 2 APPLICATION OF THE ARBITRATION LAW": [
+      50
+    ]
+  },
+  "doc_id": "4e387152960c1029b3711cacb05b287b13c977bc61f2558059a62b7b427a62eb"
+}
