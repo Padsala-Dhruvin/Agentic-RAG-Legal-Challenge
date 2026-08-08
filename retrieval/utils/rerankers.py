@@ -51,98 +51,103 @@ class HeuristicReranker(BaseReranker):
         return scored[:top_k]
 
 
-# class LocalMiniLMReranker(BaseReranker):
-#     """Local neural cross-encoder using sentence_transformers (PyTorch)."""
+class LocalMiniLMReranker(BaseReranker):
+    """Local neural cross-encoder using sentence_transformers (PyTorch)."""
 
-#     def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> None:
-#         self.model_name = model_name
-#         self.model = None
-#         try:
-#             from sentence_transformers import CrossEncoder
-#             self.model = CrossEncoder(model_name)
-#             logger.info("Loaded local CrossEncoder model: %s", model_name)
-#         except Exception as e:
-#             logger.debug("sentence_transformers not available (%s).", e)
+    def __init__(self, model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2") -> None:
+        self.model_name = model_name
+        self.model = None
+        try:
+            from sentence_transformers import CrossEncoder
+            self.model = CrossEncoder(model_name)
+            logger.info("Loaded local CrossEncoder model: %s", model_name)
+        except Exception as e:
+            logger.debug("sentence_transformers not available (%s).", e)
 
-#     def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
-#         if not chunks:
-#             return []
+    def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
+        if not chunks:
+            return []
 
-#         if self.model is not None:
-#             pairs = [[query, c.text] for c in chunks]
-#             scores = self.model.predict(pairs)
-#             scored = list(zip(chunks, [float(s) for s in scores]))
-#             scored.sort(key=lambda x: x[1], reverse=True)
-#             return scored[:top_k]
+        if self.model is not None:
+            pairs = [[query, c.text] for c in chunks]
+            scores = self.model.predict(pairs)
+            scored = list(zip(chunks, [float(s) for s in scores]))
+            scored.sort(key=lambda x: x[1], reverse=True)
+            return scored[:top_k]
 
-#         logger.info("LocalMiniLM model not loaded. Falling back to HeuristicReranker.")
-#         return HeuristicReranker().rerank(query, chunks, top_k)
-
-
-# class CohereReranker(BaseReranker):
-#     """Cloud reranker using Cohere API."""
-
-#     def __init__(self, api_key: str, model: str = "rerank-v3-512") -> None:
-#         self.api_key = api_key
-#         self.model = model
-#         self.client = None
-#         try:
-#             import cohere
-#             self.client = cohere.Client(api_key)
-#             logger.info("Initialized Cohere Reranker (%s)", model)
-#         except Exception as e:
-#             logger.warning("Failed to initialize Cohere SDK: %s", e)
-
-#     def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
-#         if not chunks or not self.client:
-#             return []
-#         try:
-#             docs = [c.text for c in chunks]
-#             response = self.client.rerank(query=query, documents=docs, top_n=top_k, model=self.model)
-#             results = []
-#             for item in response.results:
-#                 results.append((chunks[item.index], float(item.relevance_score)))
-#             return results
-#         except Exception as e:
-#             logger.error("Cohere rerank failed (%s). Falling back to HeuristicReranker.", e)
-#             return HeuristicReranker().rerank(query, chunks, top_k)
+        logger.info("LocalMiniLM model not loaded. Falling back to HeuristicReranker.")
+        return HeuristicReranker().rerank(query, chunks, top_k)
 
 
-# class VoyageReranker(BaseReranker):
-#     """Cloud reranker using Voyage AI API."""
+class CohereReranker(BaseReranker):
+    """Cloud reranker using Cohere API."""
 
-#     def __init__(self, api_key: str, model: str = "rerank-2") -> None:
-#         self.api_key = api_key
-#         self.model = model
-#         self.client = None
-#         try:
-#             import voyageai
-#             self.client = voyageai.Client(api_key=api_key)
-#             logger.info("Initialized Voyage Reranker (%s)", model)
-#         except Exception as e:
-#             logger.warning("Failed to initialize Voyage SDK: %s", e)
+    def __init__(self, api_key: str, model: str = "rerank-v3-512") -> None:
+        self.api_key = api_key
+        self.model = model
+        self.client = None
+        try:
+            import cohere
+            self.client = cohere.Client(api_key)
+            logger.info("Initialized Cohere Reranker (%s)", model)
+        except Exception as e:
+            logger.warning("Failed to initialize Cohere SDK: %s", e)
 
-#     def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
-#         if not chunks or not self.client:
-#             return []
-#         try:
-#             docs = [c.text for c in chunks]
-#             response = self.client.rerank(query=query, documents=docs, model=self.model, top_k=top_k)
-#             results = []
-#             for item in response.results:
-#                 results.append((chunks[item.index], float(item.relevance_score)))
-#             return results
-#         except Exception as e:
-#             logger.error("Voyage rerank failed (%s). Falling back to HeuristicReranker.", e)
-#             return HeuristicReranker().rerank(query, chunks, top_k)
+    def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
+        if not chunks or not self.client:
+            return []
+        try:
+            docs = [c.text for c in chunks]
+            response = self.client.rerank(query=query, documents=docs, top_n=top_k, model=self.model)
+            results = []
+            for item in response.results:
+                results.append((chunks[item.index], float(item.relevance_score)))
+            return results
+        except Exception as e:
+            logger.error("Cohere rerank failed (%s). Falling back to HeuristicReranker.", e)
+            return HeuristicReranker().rerank(query, chunks, top_k)
+
+
+class VoyageReranker(BaseReranker):
+    """Cloud reranker using Voyage AI API."""
+
+    def __init__(self, api_key: str, model: str = "rerank-2") -> None:
+        self.api_key = api_key
+        self.model = model
+        self.client = None
+        try:
+            import voyageai
+            self.client = voyageai.Client(api_key=api_key)
+            logger.info("Initialized Voyage Reranker (%s)", model)
+        except Exception as e:
+            logger.warning("Failed to initialize Voyage SDK: %s", e)
+
+    def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
+        if not chunks or not self.client:
+            return []
+        try:
+            docs = [c.text for c in chunks]
+            response = self.client.rerank(query=query, documents=docs, model=self.model, top_k=top_k)
+            results = []
+            for item in response.results:
+                results.append((chunks[item.index], float(item.relevance_score)))
+            return results
+        except Exception as e:
+            logger.error("Voyage rerank failed (%s). Falling back to HeuristicReranker.", e)
+            return HeuristicReranker().rerank(query, chunks, top_k)
 
 
 def get_reranker(config: Optional[EnvConfig] = None) -> BaseReranker:
     """Factory function selecting the best available reranker based on config/keys."""
     cfg = config or get_config()
-    # if cfg.cohere_api_key:
-    #     return CohereReranker(api_key=cfg.cohere_api_key)
-    # if cfg.voyage_api_key:
-    #     return VoyageReranker(api_key=cfg.voyage_api_key)
-    # Default offline choice requiring 0 dependencies or API keys:
+    if getattr(cfg, "cohere_api_key", None):
+        return CohereReranker(api_key=cfg.cohere_api_key)
+    if getattr(cfg, "voyage_api_key", None):
+        return VoyageReranker(api_key=cfg.voyage_api_key)
+
+    local = LocalMiniLMReranker()
+    if local.model is not None:
+        return local
+
+    logger.warning("No cross-encoder available; falling back to HeuristicReranker.")
     return HeuristicReranker()

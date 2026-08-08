@@ -3,7 +3,8 @@ retrieval/index/hybrid_indexer.py
 
 Hybrid Indexer combining Lexical (BM25Okapi) and Semantic (Dense/TF-IDF Vector) search
 via Reciprocal Rank Fusion (RRF, k=60), followed by our active Reranker (`HeuristicReranker`).
-Supports both Cloud Mode (`TurbopufferStore` + `Cohere`) and Local/Offline Mode (`InMemoryVectorStore`).
+Supports Cloud Mode (`TurbopufferStore` + `Cohere`) and Local/Offline Mode
+(`InMemoryVectorStore`, dense all-MiniLM-L6-v2 embeddings).
 """
 
 import logging
@@ -20,30 +21,71 @@ logger = logging.getLogger(__name__)
 
 
 class InMemoryVectorStore:
-    """Local offline vector store using scikit-learn TF-IDF and cosine similarity."""
+    """Local offline DENSE vector store using sentence-transformers embeddings.
 
-    def __init__(self) -> None:
+    Uses all-MiniLM-L6-v2 (384-dim) with cosine similarity. Falls back to
+    TF-IDF only if sentence-transformers is unavailable, so the retrieval
+    mode in use is always reported explicitly via `self.backend`.
+    """
+
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
         self.chunks: List[LegalChunk] = []
+        self.backend = "none"
+        self.model = None
+        self.embeddings = None
+        # TF-IDF fallback state
         self.vectorizer = None
         self.tfidf_matrix = None
+
         try:
-            from sklearn.feature_extraction.text import TfidfVectorizer
-            self.vectorizer = TfidfVectorizer(stop_words="english", max_features=10000)
+            from sentence_transformers import SentenceTransformer
+            self.model = SentenceTransformer(model_name)
+            self.backend = "dense_minilm"
+            logger.info("Loaded dense embedding model: %s", model_name)
         except Exception as e:
-            logger.warning("scikit-learn not available (%s). InMemoryVectorStore will use basic overlap.", e)
+            logger.warning("sentence-transformers unavailable (%s); falling back to TF-IDF.", e)
+            try:
+                from sklearn.feature_extraction.text import TfidfVectorizer
+                self.vectorizer = TfidfVectorizer(stop_words="english", max_features=10000)
+                self.backend = "sparse_tfidf"
+            except Exception as e2:
+                logger.warning("scikit-learn also unavailable (%s); using token overlap.", e2)
+                self.backend = "token_overlap"
 
     def upsert_chunks(self, chunks: List[LegalChunk]) -> None:
         self.chunks = chunks
-        if not chunks or not self.vectorizer:
+        if not chunks:
             return
-        texts = [c.text for c in chunks]
-        self.tfidf_matrix = self.vectorizer.fit_transform(texts)
-        logger.info("Fitted local InMemoryVectorStore (TF-IDF matrix shape: %s)", self.tfidf_matrix.shape)
+
+        if self.backend == "dense_minilm":
+            texts = [c.text for c in chunks]
+            self.embeddings = self.model.encode(
+                texts, convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
+            )
+            logger.info("Encoded %d chunks into dense matrix %s", len(chunks), self.embeddings.shape)
+            return
+
+        if self.backend == "sparse_tfidf":
+            texts = [c.text for c in chunks]
+            self.tfidf_matrix = self.vectorizer.fit_transform(texts)
+            logger.info("Fitted TF-IDF matrix %s", self.tfidf_matrix.shape)
 
     def query(self, query_text: str, top_k: int = 30) -> List[Tuple[LegalChunk, float]]:
         if not self.chunks:
             return []
-        if self.vectorizer and self.tfidf_matrix is not None:
+
+        if self.backend == "dense_minilm" and self.embeddings is not None:
+            import numpy as np
+            q_vec = self.model.encode(
+                [query_text], convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
+            )[0]
+            # embeddings are L2-normalized, so dot product == cosine similarity
+            sims = np.dot(self.embeddings, q_vec)
+            scored = list(zip(self.chunks, [float(s) for s in sims]))
+            scored.sort(key=lambda x: x[1], reverse=True)
+            return scored[:top_k]
+
+        if self.backend == "sparse_tfidf" and self.tfidf_matrix is not None:
             from sklearn.metrics.pairwise import cosine_similarity
             q_vec = self.vectorizer.transform([query_text])
             sims = cosine_similarity(q_vec, self.tfidf_matrix).flatten()
@@ -51,7 +93,6 @@ class InMemoryVectorStore:
             scored.sort(key=lambda x: x[1], reverse=True)
             return scored[:top_k]
 
-        # Basic overlap fallback if scikit-learn missing
         q_tokens = set(re.findall(r"\w+", query_text.lower()))
         scored = []
         for c in self.chunks:
