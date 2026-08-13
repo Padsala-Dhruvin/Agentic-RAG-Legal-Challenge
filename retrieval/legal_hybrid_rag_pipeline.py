@@ -174,13 +174,16 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
     # Part 5 (6.7): Master Pipeline Orchestration
     # -------------------------------------------------------------------------
     def _merge_retrieval_hits(self, all_hits: List[List[Tuple[LegalChunk, float]]], top_k: int) -> List[Tuple[LegalChunk, float]]:
-        """Merge retrieval hits from multiple query variants by best score per chunk."""
+        """Fuse retrieval hits from query variants using Reciprocal Rank Fusion."""
+        rrf_k = self.indexer.rrf_k
         by_chunk: Dict[str, Tuple[LegalChunk, float]] = {}
+
         for hits in all_hits:
-            for chunk, score in hits:
-                current = by_chunk.get(chunk.chunk_id)
-                if current is None or score > current[1]:
-                    by_chunk[chunk.chunk_id] = (chunk, score)
+            for rank, (chunk, _) in enumerate(hits, 1):
+                current_chunk, current_score = by_chunk.get(chunk.chunk_id, (chunk, 0.0))
+                fused_score = current_score + (1.0 / (rrf_k + rank))
+                by_chunk[chunk.chunk_id] = (current_chunk, fused_score)
+
         merged = list(by_chunk.values())
         merged.sort(key=lambda x: x[1], reverse=True)
         return merged[:top_k]
