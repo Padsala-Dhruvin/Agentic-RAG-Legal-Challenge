@@ -12,6 +12,7 @@ from retrieval.index import HybridIndexer, InMemoryVectorStore
 from retrieval.free_text_prompts import LEGAL_SYSTEM_PROMPT, build_free_text_prompt
 from retrieval.hybrid_rag_pipeline import BaseLegalPipeline, HybridRAGPipeline
 from retrieval.legal_hybrid_rag_pipeline import CaseFactRecord, LegalHybridRAGPipeline
+from retrieval.query_rewriter import LegalQueryRewriter
 
 __all__ = [
     "IngestedCorpusLoader",
@@ -32,4 +33,5 @@ __all__ = [
     "HybridRAGPipeline",
     "CaseFactRecord",
     "LegalHybridRAGPipeline",
+    "LegalQueryRewriter",
 ]

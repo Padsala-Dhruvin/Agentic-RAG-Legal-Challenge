@@ -66,6 +66,13 @@ def main() -> None:
             print(f"   Confidence:          {plan.confidence}")
             print(f"   Reasoning:           {plan.reasoning}")
 
+            rewrite_candidates = pipeline.query_rewriter.generate_candidates(query, route=plan.route)
+            print("\n🧭 QUERY REWRITE DEBUG:")
+            print(f"   Original query:      {query}")
+            print(f"   Retrieval queries:   {len(rewrite_candidates)} candidate(s)")
+            for idx, cand in enumerate(rewrite_candidates, 1):
+                print(f"   [{idx}] {cand}")
+
             # ============================================
             # STEP 2-5: Full pipeline execution with telemetry
             # ============================================
@@ -95,6 +102,8 @@ def main() -> None:
                 print(f"   Searched across {len(pipeline.chunks)} chunks from {len(docs)} documents")
                 print(f"   Top {chunks_count} chunks retrieved using Reciprocal Rank Fusion (RRF)")
                 print(f"   Best match score: {top_score:.4f}")
+                if res["metadata"].get("search_queries"):
+                    print(f"   Search queries used: {res['metadata'].get('search_queries')}")
 
                 print(f"\n🤖 STEP 3: LLM SYNTHESIS (sending retrieved pages to Gemini)")
                 print(f"   Model used: {mode_used}")

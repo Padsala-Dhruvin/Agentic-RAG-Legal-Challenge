@@ -86,6 +86,7 @@ class CohereReranker(BaseReranker):
         self.api_key = api_key
         self.model = model
         self.client = None
+        self.disabled = False
         try:
             import cohere
             self.client = cohere.Client(api_key)
@@ -94,7 +95,7 @@ class CohereReranker(BaseReranker):
             logger.warning("Failed to initialize Cohere SDK: %s", e)
 
     def rerank(self, query: str, chunks: List[LegalChunk], top_k: int = 5) -> List[Tuple[LegalChunk, float]]:
-        if not chunks or not self.client:
+        if self.disabled or not chunks or not self.client:
             return []
         try:
             docs = [c.text for c in chunks]
@@ -104,6 +105,14 @@ class CohereReranker(BaseReranker):
                 results.append((chunks[item.index], float(item.relevance_score)))
             return results
         except Exception as e:
+            err = str(e).lower()
+            # Stop retrying known fatal conditions in the current process.
+            if "not found" in err or "status_code: 404" in err:
+                self.disabled = True
+                logger.error("Cohere rerank model '%s' unavailable. Disabling Cohere reranker for this run.", self.model)
+            if "status_code: 429" in err or "rate limit" in err:
+                self.disabled = True
+                logger.error("Cohere rerank rate-limited. Disabling Cohere reranker for this run.")
             logger.error("Cohere rerank failed (%s). Falling back to HeuristicReranker.", e)
             return HeuristicReranker().rerank(query, chunks, top_k)
 
@@ -140,8 +149,11 @@ class VoyageReranker(BaseReranker):
 def get_reranker(config: Optional[EnvConfig] = None) -> BaseReranker:
     """Factory function selecting the best available reranker based on config/keys."""
     cfg = config or get_config()
-    if getattr(cfg, "cohere_api_key", None):
-        return CohereReranker(api_key=cfg.cohere_api_key)
+    if getattr(cfg, "use_cohere_rerank", True) and getattr(cfg, "cohere_api_key", None):
+        return CohereReranker(
+            api_key=cfg.cohere_api_key,
+            model=getattr(cfg, "cohere_rerank_model", "rerank-english-v3.0"),
+        )
     if getattr(cfg, "voyage_api_key", None):
         return VoyageReranker(api_key=cfg.voyage_api_key)
 

@@ -18,6 +18,7 @@ from retrieval.hybrid_rag_pipeline import BaseLegalPipeline
 from retrieval.index.hybrid_indexer import HybridIndexer
 from retrieval.legal_question_router import LegalQuestionRouter, RoutePlan
 from retrieval.loaders.ingested_corpus_loader import LoadedDocument
+from retrieval.query_rewriter import LegalQueryRewriter
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
         self.router = LegalQuestionRouter()
         self.indexer = HybridIndexer(rrf_k=60, config=self.cfg)
         self.chunker = LegalChunker(max_section_chars=4000)
+        self.query_rewriter = LegalQueryRewriter(enabled=self.cfg.enable_query_rewrite)
         self.documents: List[LoadedDocument] = []
         self.chunks: List[LegalChunk] = []
         self.fact_records: Dict[str, CaseFactRecord] = {}
@@ -171,6 +173,18 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
     # -------------------------------------------------------------------------
     # Part 5 (6.7): Master Pipeline Orchestration
     # -------------------------------------------------------------------------
+    def _merge_retrieval_hits(self, all_hits: List[List[Tuple[LegalChunk, float]]], top_k: int) -> List[Tuple[LegalChunk, float]]:
+        """Merge retrieval hits from multiple query variants by best score per chunk."""
+        by_chunk: Dict[str, Tuple[LegalChunk, float]] = {}
+        for hits in all_hits:
+            for chunk, score in hits:
+                current = by_chunk.get(chunk.chunk_id)
+                if current is None or score > current[1]:
+                    by_chunk[chunk.chunk_id] = (chunk, score)
+        merged = list(by_chunk.values())
+        merged.sort(key=lambda x: x[1], reverse=True)
+        return merged[:top_k]
+
     def answer_question(self, query: str, **kwargs: Any) -> Dict[str, Any]:
         """Execute full route -> bypass -> retrieve -> fuse -> synthesize pipeline."""
         if not self.is_ready():
@@ -191,12 +205,19 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
         filter_rep = plan.extracted_filters.get("representation")
         top_k = kwargs.get("top_k", 4)
 
-        retrieved_hits = self.indexer.search(
-            query=query,
-            top_k=top_k,
-            filter_doc_id=filter_doc,
-            filter_representation=filter_rep,
-        )
+        # Query rewriting is intentionally applied only to substantive section search.
+        search_queries = self.query_rewriter.generate_candidates(query, route=plan.route)
+        all_hits: List[List[Tuple[LegalChunk, float]]] = []
+        for q in search_queries:
+            hits = self.indexer.search(
+                query=q,
+                top_k=top_k,
+                filter_doc_id=filter_doc,
+                filter_representation=filter_rep,
+            )
+            all_hits.append(hits)
+
+        retrieved_hits = self._merge_retrieval_hits(all_hits, top_k=top_k)
 
         top_chunks = [chunk for chunk, _ in retrieved_hits]
         top_score = retrieved_hits[0][1] if retrieved_hits else 0.0
@@ -213,6 +234,7 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
                 "route": plan.route,
                 "top_score": top_score,
                 "chunks_retrieved": len(top_chunks),
+                "search_queries": search_queries,
                 "mode": self.active_model if (self.llm_client and not self.cfg.mock_llm) else "local_extractive",
             },
         }

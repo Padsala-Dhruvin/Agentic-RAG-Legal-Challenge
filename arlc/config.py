@@ -32,6 +32,8 @@ class EnvConfig:
 
     # Optional API Rerankers
     voyage_api_key: Optional[str]
+    use_cohere_rerank: bool
+    cohere_rerank_model: str
 
     # Remote Vector Store (Turbopuffer)
     turbopuffer_api_key: Optional[str]
@@ -40,6 +42,7 @@ class EnvConfig:
 
     # Pipeline behavior flags
     enable_rerank: bool
+    enable_query_rewrite: bool
     mock_llm: bool
     ingest_use_llm: bool
 
@@ -72,10 +75,13 @@ class EnvConfig:
             cohere_api_key=os.getenv("COHERE_API_KEY") or None,
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
             voyage_api_key=os.getenv("VOYAGE_API_KEY") or None,
+            use_cohere_rerank=_as_bool(os.getenv("LEGAL_USE_COHERE_RERANK"), True),
+            cohere_rerank_model=os.getenv("COHERE_RERANK_MODEL", "rerank-english-v3.0"),
             turbopuffer_api_key=os.getenv("TURBOPUFFER_API_KEY") or None,
             turbopuffer_namespace=os.getenv("TURBOPUFFER_NAMESPACE", "legal-challenge-final"),
             skip_indexing=_as_bool(os.getenv("LEGAL_HYBRID_SKIP_INDEXING"), False),
             enable_rerank=_as_bool(os.getenv("LEGAL_HYBRID_ENABLE_RERANK"), True),
+            enable_query_rewrite=_as_bool(os.getenv("LEGAL_ENABLE_QUERY_REWRITE"), True),
             mock_llm=_as_bool(os.getenv("LEGAL_RAG_SMOKE_MOCK_LLM"), False),
             ingest_use_llm=_as_bool(os.getenv("LEGAL_INGEST_USE_LLM"), True),
             docs_dir=os.getenv("DOCS_DIR", "docs_corpus"),
