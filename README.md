@@ -78,6 +78,13 @@ Copy `.env.example` to `.env` and customize your keys (optional for local offlin
 cp .env.example .env
 ```
 
+### 3. Run the Browser UI
+Start the interactive Streamlit interface from the project root:
+```powershell
+streamlit run streamlit_app.py
+```
+The browser UI loads the indexed legal corpus, accepts a user question, and displays the grounded answer, physical-page citations, route, retrieval score, and rewritten search queries.
+
 ---
 
 ## 🛠️ Master CLI Usage (`main.py`)

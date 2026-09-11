@@ -30,6 +30,8 @@ def get_llm_client_and_model(config: Optional[EnvConfig] = None) -> Tuple[OpenAI
         client = OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=cfg.openrouter_api_key.strip(),
+            timeout=cfg.llm_timeout_seconds,
+            max_retries=0,
         )
         return client, model
 
@@ -39,13 +41,19 @@ def get_llm_client_and_model(config: Optional[EnvConfig] = None) -> Tuple[OpenAI
         client = OpenAI(
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
             api_key=cfg.gemini_api_key.strip(),
+            timeout=cfg.llm_timeout_seconds,
+            max_retries=0,
         )
         return client, model
 
     # 3. Direct OpenAI Provider
     if cfg.openai_api_key:
         logger.debug("Routing LLM call to direct OpenAI API for model: %s", model)
-        client = OpenAI(api_key=cfg.openai_api_key.strip())
+        client = OpenAI(
+            api_key=cfg.openai_api_key.strip(),
+            timeout=cfg.llm_timeout_seconds,
+            max_retries=0,
+        )
         return client, model
 
     raise ValueError(

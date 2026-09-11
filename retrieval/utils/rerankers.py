@@ -13,7 +13,6 @@ import logging
 import re
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
-
 from arlc.config import EnvConfig, get_config
 from retrieval.chunkers.legal_chunk_types import LegalChunk
 
@@ -49,8 +48,6 @@ class HeuristicReranker(BaseReranker):
 
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[:top_k]
-
-
 class LocalMiniLMReranker(BaseReranker):
     """Local neural cross-encoder using sentence_transformers (PyTorch)."""
 
@@ -149,6 +146,8 @@ class VoyageReranker(BaseReranker):
 def get_reranker(config: Optional[EnvConfig] = None) -> BaseReranker:
     """Factory function selecting the best available reranker based on config/keys."""
     cfg = config or get_config()
+    if not getattr(cfg, "enable_rerank", True):
+        return HeuristicReranker()
     if getattr(cfg, "use_cohere_rerank", True) and getattr(cfg, "cohere_api_key", None):
         return CohereReranker(
             api_key=cfg.cohere_api_key,

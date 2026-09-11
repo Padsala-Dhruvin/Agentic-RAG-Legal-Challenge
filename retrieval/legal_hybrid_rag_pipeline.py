@@ -7,11 +7,14 @@ Deterministic Bypass, Hybrid Retrieval (`HybridIndexer`), and Dual-Mode Answer S
 """
 
 import logging
+import json
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from arlc.config import EnvConfig, get_config
+from arlc.llm_cache import LLMResponseCache
 from retrieval.chunkers import LegalChunk, LegalChunker
 from retrieval.free_text_prompts import LEGAL_SYSTEM_PROMPT, build_free_text_prompt
 from retrieval.hybrid_rag_pipeline import BaseLegalPipeline
@@ -46,6 +49,8 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
         self.documents: List[LoadedDocument] = []
         self.chunks: List[LegalChunk] = []
         self.fact_records: Dict[str, CaseFactRecord] = {}
+        self.document_summaries: Dict[str, str] = {}
+        self.llm_cache = LLMResponseCache(self.cfg.llm_cache_path)
         self.llm_client = None
         self.active_model = "local_extractive"
 
@@ -67,6 +72,10 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
             return
 
         logger.info("Indexing %d preprocessed legal documents into LegalHybridRAGPipeline...", len(documents))
+        self.document_summaries = {}
+        for doc in documents:
+            self.document_summaries[doc.doc_id] = self._build_document_summary(doc)
+            doc.metadata["document_summary"] = self.document_summaries[doc.doc_id]
         self.chunks = self.chunker.chunk_all_documents(documents)
         self.indexer.index_chunks(self.chunks)
 
@@ -89,6 +98,19 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
 
         self._is_indexed = True
         logger.info("Successfully indexed %d documents (%d chunks, %d fact records)", len(documents), len(self.chunks), len(self.fact_records))
+
+    @staticmethod
+    def _build_document_summary(doc: LoadedDocument) -> str:
+        """Create a deterministic document-level summary for coarse retrieval."""
+        first_text = " ".join(block.text for block in doc.blocks[:5]).strip()
+        return (
+            f"Document {doc.doc_id}. Type: {doc.metadata.get('doc_type', 'unknown')}. "
+            f"Title: {doc.metadata.get('official_title') or doc.doc_id}. "
+            f"Claim: {doc.metadata.get('claim_number') or 'unknown'}. "
+            f"Court: {doc.metadata.get('court') or 'unknown'}. "
+            f"Date: {doc.metadata.get('date') or 'unknown'}. "
+            f"Opening text: {first_text[:700]}"
+        )
 
     # -------------------------------------------------------------------------
     # Part 2 (6.4): Route Resolution & Deterministic Bypass
@@ -119,6 +141,76 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
     # -------------------------------------------------------------------------
     # Part 4 (6.6): LLM Invocation vs Local Extractive Fallback
     # -------------------------------------------------------------------------
+    @staticmethod
+    def _tokens(text: str) -> set[str]:
+        return set(re.findall(r"\w+", text.lower()))
+
+    def _validate_citations(self, citations: List[Dict[str, Any]], chunks: List[LegalChunk]) -> List[Dict[str, Any]]:
+        """Keep only citations that point to retrieved chunks and valid pages."""
+        valid_pages = {(chunk.doc_id, page) for chunk in chunks for page in chunk.pages}
+        return [
+            {"doc_id": cit["doc_id"], "page": cit["page"]}
+            for cit in citations
+            if cit.get("doc_id", "") and (cit.get("doc_id"), cit.get("page")) in valid_pages
+        ]
+
+    def _is_grounded(self, answer: str, chunks: List[LegalChunk]) -> bool:
+        """Apply a lightweight lexical groundedness gate before returning an answer."""
+        answer_tokens = self._tokens(re.sub(r"\[Doc:.*?\]", "", answer))
+        context_tokens = self._tokens(" ".join(chunk.text for chunk in chunks))
+        if not answer_tokens:
+            return False
+        overlap = len(answer_tokens & context_tokens) / len(answer_tokens)
+        return overlap >= self.cfg.groundedness_min_overlap
+
+    def _call_llm_with_retry(self, prompt: str) -> str:
+        """Call the LLM with a persistent cache and bounded exponential retry."""
+        messages = [
+            {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+        cache_key = self.llm_cache.key(self.active_model, messages, 0.0)
+        cached = self.llm_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        last_error: Optional[Exception] = None
+        for attempt in range(max(1, self.cfg.llm_retry_attempts)):
+            try:
+                response = self.llm_client.chat.completions.create(
+                    model=self.active_model,
+                    messages=messages,
+                    temperature=0.0,
+                )
+                answer = response.choices[0].message.content.strip()
+                self.llm_cache.put(cache_key, answer)
+                return answer
+            except Exception as exc:
+                last_error = exc
+                if attempt + 1 < max(1, self.cfg.llm_retry_attempts):
+                    time.sleep(0.5 * (2 ** attempt))
+        raise RuntimeError(f"LLM request failed after retries: {last_error}")
+
+    @staticmethod
+    def _parse_structured_response(raw_response: str) -> Optional[Dict[str, Any]]:
+        """Parse strict JSON plus common fenced-JSON model formatting."""
+        candidates = [raw_response.strip()]
+        fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_response, re.DOTALL | re.IGNORECASE)
+        if fenced:
+            candidates.insert(0, fenced.group(1))
+        object_match = re.search(r"\{.*\}", raw_response, re.DOTALL)
+        if object_match:
+            candidates.append(object_match.group(0))
+
+        for candidate in candidates:
+            try:
+                payload = json.loads(candidate)
+                if isinstance(payload, dict):
+                    return payload
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+        return None
+
     def _synthesize_answer(self, query: str, chunks: List[LegalChunk]) -> Tuple[str, List[Dict[str, Any]]]:
         """Generate final answer using cloud LLM or local extractive fallback."""
         if not chunks:
@@ -134,16 +226,21 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
         if self.llm_client and not self.cfg.mock_llm:
             try:
                 prompt = build_free_text_prompt(query, chunks)
-                response = self.llm_client.chat.completions.create(
-                    model=self.active_model,
-                    messages=[
-                        {"role": "system", "content": LEGAL_SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=0.0,
-                )
-                ans = response.choices[0].message.content.strip()
-                return ans, citations
+                raw_response = self._call_llm_with_retry(prompt)
+                try:
+                    payload = self._parse_structured_response(raw_response)
+                    if payload is None:
+                        raise ValueError("No JSON object found")
+                    ans = str(payload.get("answer", "")).strip()
+                    model_citations = payload.get("citations", [])
+                    validated = self._validate_citations(model_citations, chunks)
+                    if not payload.get("supported", True) or not ans or not self._is_grounded(ans, chunks):
+                        return "Insufficient evidence in retrieved documents to answer precisely.", validated or citations
+                    return ans, validated or citations
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    logger.warning("LLM returned non-JSON output; applying groundedness fallback.")
+                    if self._is_grounded(raw_response, chunks):
+                        return raw_response, citations
             except Exception as e:
                 logger.warning("Cloud LLM synthesis failed (%s). Falling back to local extractive.", e)
 
@@ -168,6 +265,8 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
             best_sentence = top_chunk.text[:250].strip() + "..."
 
         ans = f"{best_sentence} {page_ref}"
+        if not self._is_grounded(ans, chunks):
+            return "Insufficient evidence in retrieved documents to answer precisely.", citations
         return ans, citations
 
     # -------------------------------------------------------------------------
@@ -221,6 +320,15 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
             all_hits.append(hits)
 
         retrieved_hits = self._merge_retrieval_hits(all_hits, top_k=top_k)
+
+        if retrieved_hits and retrieved_hits[0][1] < self.cfg.retrieval_min_score:
+            retrieved_hits = []
+
+        if retrieved_hits and self.cfg.enable_final_rerank:
+            candidate_chunks = [chunk for chunk, _ in retrieved_hits]
+            reranked = self.indexer.reranker.rerank(query, candidate_chunks, top_k=top_k)
+            if reranked:
+                retrieved_hits = reranked
 
         top_chunks = [chunk for chunk, _ in retrieved_hits]
         top_score = retrieved_hits[0][1] if retrieved_hits else 0.0

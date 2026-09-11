@@ -39,6 +39,7 @@ downloaded_corpus.zip
 docs_corpus/
 ingestion/docs_corpus_ingest_result/
 *.log
+.cache/
 
 # IDE / Editor
 .idea/

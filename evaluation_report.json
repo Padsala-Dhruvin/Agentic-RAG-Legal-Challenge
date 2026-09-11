@@ -2,43 +2,48 @@
   "total_questions": 5,
   "submission_file": "submission.json",
   "architecture": "Legal Hybrid RAG (BM25 + TF-IDF RRF + Reranker + Deterministic Bypass + Dual-Mode Synthesis)",
+  "metrics": {
+    "grounded_answers": 4,
+    "abstentions": 1,
+    "valid_citation_answers": 4,
+    "recall_cases": 0,
+    "retrieval_recall_at_k": null
+  },
   "sample_answers": [
     {
       "question_id": "q_sample_001_date",
-      "answer": "The Date of Issue of the document in case CFI 057/2025 is **2 February 2026** [Doc: 1b446e196b4d1752241c8ff689a31ea705e98ad0c16b9d343c303664f72b64a1, Page: 1, Page: 2].",
+      "answer": "The Date of Issue of the document in case CFI 057/2025 is 2 February 2026 [Doc: 1b446e196b4d1752241c8ff689a31ea705e98ad0c16b9d343c303664f72b64a1, Page: 1].",
       "telemetry": {
         "timing": {
-          "ttft_ms": 8407.4,
+          "ttft_ms": 670.21,
           "tpot_ms": 0.0,
-          "total_time_ms": 8407.4
+          "total_time_ms": 670.22
         },
         "retrieval": {
           "retrieved_chunk_pages": [
             {
               "doc_id": "1b446e196b4d1752241c8ff689a31ea705e98ad0c16b9d343c303664f72b64a1",
               "page_numbers": [
-                1,
-                2,
-                3
+                1
               ]
             }
           ]
         },
         "usage": {
           "input_tokens": 126,
-          "output_tokens": 42
+          "output_tokens": 38
         },
         "model_name": "gemini-flash-latest"
       }
     },
     {
       "question_id": "q_sample_002_bool",
-      "answer": "Justice Sapna Jhangiani\n\n--- Title Page Excerpt ---\nOlexa v Odon [2025] DIFC SCT 295\nDECEMBER 10, 2025 SCT - JUDGMENTS AND ORDERS\nClaim No: SCT 295/2025\nTHE DUBAI INTERNATIONAL FINANCIAL CENTRE COURTS\nIN THE SMALL CLAIMS TRIBUNAL\nBETWEEN\nOLEXA\nClaimant/Applicant\nand\nODON\nDefendant/Respondent\nORDER WITH REASONS OF H.E. [Doc: 09660f78c26cd56c08c7253ed21ba01fb246092f482ccd8acd8e6f9b6fd2d917, Page: 1]",
+      "answer": "Opening text: Olexa v Odon [2025] DIFC SCT 295\nDECEMBER 10, 2025 SCT - JUDGMENTS AND ORDERS\nClaim No: SCT 295/2025\nTHE DUBAI INTERNATIONAL FINANCIAL CENTRE COURTS\nIN THE SMALL CLAIMS TRIBUNAL\nBETWEEN\nOLEXA\nClaimant/Applicant\nand\nODON\nDefendant/Respondent\nORDER WITH REASONS OF H.E. [Doc: 09660f78c26cd56c08c7253ed21ba01fb246092f482ccd8acd8e6f9b6fd2d917, Page: 1]",
       "telemetry": {
         "timing": {
-          "ttft_ms": 2285.82,
+          "ttft_ms": 34140.0,
           "tpot_ms": 0.0,
-          "total_time_ms": 2285.83
+          "total_time_ms": 34140.01
         },
         "retrieval": {
           "retrieved_chunk_pages": [
@@ -58,7 +63,7 @@
         },
         "usage": {
           "input_tokens": 128,
-          "output_tokens": 106
+          "output_tokens": 94
         },
         "model_name": "gemini-flash-latest"
       }

@@ -27,6 +27,7 @@ class EnvConfig:
     # Embeddings configuration
     use_cohere_embeddings: bool
     use_openai_embeddings: bool
+    use_dense_embeddings: bool
     cohere_api_key: Optional[str]
     embedding_model: str
 
@@ -43,6 +44,13 @@ class EnvConfig:
     # Pipeline behavior flags
     enable_rerank: bool
     enable_query_rewrite: bool
+    enable_final_rerank: bool
+    retrieval_min_score: float
+    llm_cache_path: str
+    llm_retry_attempts: int
+    llm_timeout_seconds: float
+    groundedness_min_overlap: float
+    ui_use_cloud_llm: bool
     mock_llm: bool
     ingest_use_llm: bool
 
@@ -72,6 +80,7 @@ class EnvConfig:
             llm_model=os.getenv("LLM_MODEL", "gemini-flash-latest").strip(),
             use_cohere_embeddings=_as_bool(os.getenv("USE_COHERE_EMBEDDINGS"), True),
             use_openai_embeddings=_as_bool(os.getenv("USE_OPENAI_EMBEDDINGS"), False),
+            use_dense_embeddings=_as_bool(os.getenv("LEGAL_USE_DENSE_EMBEDDINGS"), True),
             cohere_api_key=os.getenv("COHERE_API_KEY") or None,
             embedding_model=os.getenv("EMBEDDING_MODEL", "text-embedding-3-small"),
             voyage_api_key=os.getenv("VOYAGE_API_KEY") or None,
@@ -82,6 +91,13 @@ class EnvConfig:
             skip_indexing=_as_bool(os.getenv("LEGAL_HYBRID_SKIP_INDEXING"), False),
             enable_rerank=_as_bool(os.getenv("LEGAL_HYBRID_ENABLE_RERANK"), True),
             enable_query_rewrite=_as_bool(os.getenv("LEGAL_ENABLE_QUERY_REWRITE"), True),
+            enable_final_rerank=_as_bool(os.getenv("LEGAL_ENABLE_FINAL_RERANK"), True),
+            retrieval_min_score=float(os.getenv("LEGAL_RETRIEVAL_MIN_SCORE", "0.015")),
+            llm_cache_path=os.getenv("LEGAL_LLM_CACHE_PATH", ".cache/llm_responses.json"),
+            llm_retry_attempts=int(os.getenv("LEGAL_LLM_RETRY_ATTEMPTS", "2")),
+            llm_timeout_seconds=float(os.getenv("LEGAL_LLM_TIMEOUT_SECONDS", "15")),
+            groundedness_min_overlap=float(os.getenv("LEGAL_GROUNDEDNESS_MIN_OVERLAP", "0.12")),
+            ui_use_cloud_llm=_as_bool(os.getenv("LEGAL_UI_USE_CLOUD_LLM"), False),
             mock_llm=_as_bool(os.getenv("LEGAL_RAG_SMOKE_MOCK_LLM"), False),
             ingest_use_llm=_as_bool(os.getenv("LEGAL_INGEST_USE_LLM"), True),
             docs_dir=os.getenv("DOCS_DIR", "docs_corpus"),

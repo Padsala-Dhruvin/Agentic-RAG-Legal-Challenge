@@ -15,7 +15,8 @@ MANDATORY RULES:
 1. ZERO HALLUCINATION: You must ONLY use facts, dates, monetary amounts, and legal principles explicitly written in the Context Chunks below. Do NOT assume, extrapolate, or use outside legal knowledge.
 2. CITATION REQUIREMENT: For every factual assertion you make, you must cite the exact Document ID and Physical Page number from which that fact was drawn using the format: `[Doc: <doc_id>, Page: <page_number>]`.
 3. INSUFFICIENT EVIDENCE: If the provided Context Chunks do not contain sufficient information to answer the question with 100% factual certainty, you must reply explicitly: "Insufficient evidence in retrieved documents to answer precisely."
-4. CONCISENESS & CLARITY: State the direct answer clearly, followed by the supporting reasoning drawn from the cited chunks."""
+4. CONCISENESS & CLARITY: State the direct answer clearly, followed by the supporting reasoning drawn from the cited chunks.
+5. STRUCTURED OUTPUT: Return ONLY valid JSON with this shape: {"answer": "...", "supported": true, "citations": [{"doc_id": "...", "page": 1}]}. Set supported to false when evidence is insufficient."""
 
 
 def build_free_text_prompt(question: str, chunks: List[LegalChunk], max_context_chars: int = 12000) -> str:
@@ -41,5 +42,5 @@ def build_free_text_prompt(question: str, chunks: List[LegalChunk], max_context_
 {question}
 
 ### INSTRUCTIONS:
-Answer the question accurately based strictly on the RETRIEVED LEGAL CONTEXT above. Ensure every factual claim includes a page citation like `[Doc: <doc_id>, Page: <page_num>]`."""
+Answer the question accurately based strictly on the RETRIEVED LEGAL CONTEXT above. Return only the JSON object requested by the system message. Ensure every factual claim includes a page citation like `[Doc: <doc_id>, Page: <page_num>]`."""
     return prompt

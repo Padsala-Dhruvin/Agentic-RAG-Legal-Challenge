@@ -35,9 +35,17 @@ def load_questions(questions_path: str) -> List[Dict[str, Any]]:
     return data if isinstance(data, list) else data.get("questions", [])
 
 
-def run_evaluation(pipeline: LegalHybridRAGPipeline, questions: List[Dict[str, Any]]) -> SubmissionBuilder:
+def run_evaluation(pipeline: LegalHybridRAGPipeline, questions: List[Dict[str, Any]]) -> tuple[SubmissionBuilder, Dict[str, Any]]:
     """Execute evaluation loop over all questions, tracking telemetry and citations."""
     builder = SubmissionBuilder(architecture_summary="Legal Hybrid RAG (BM25 + TF-IDF RRF + Reranker + Deterministic Bypass + Dual-Mode Synthesis)")
+    metrics: Dict[str, Any] = {
+        "grounded_answers": 0,
+        "abstentions": 0,
+        "valid_citation_answers": 0,
+        "recall_cases": 0,
+        "retrieval_recall_at_k": None,
+    }
+    recall_hits = 0
 
     logger.info("Starting evaluation across %d benchmark questions...", len(questions))
     for idx, q_data in enumerate(questions, 1):
@@ -77,7 +85,24 @@ def run_evaluation(pipeline: LegalHybridRAGPipeline, questions: List[Dict[str, A
             telemetry=telemetry,
         )
 
-    return builder
+        answer_text = res["answer"]
+        if answer_text.startswith("Insufficient evidence"):
+            metrics["abstentions"] += 1
+        else:
+            metrics["grounded_answers"] += 1
+        if res.get("citations"):
+            metrics["valid_citation_answers"] += 1
+
+        expected_doc_id = q_data.get("expected_doc_id") or q_data.get("doc_id")
+        if expected_doc_id:
+            metrics["recall_cases"] += 1
+            retrieved_doc_ids = {cit.get("doc_id") for cit in res.get("citations", [])}
+            if expected_doc_id in retrieved_doc_ids:
+                recall_hits += 1
+
+    if metrics["recall_cases"]:
+        metrics["retrieval_recall_at_k"] = recall_hits / metrics["recall_cases"]
+    return builder, metrics
 
 
 def main() -> None:
@@ -107,7 +132,7 @@ def main() -> None:
         ]
 
     # 4. Run evaluation
-    submission_builder = run_evaluation(pipeline, questions)
+    submission_builder, evaluation_metrics = run_evaluation(pipeline, questions)
 
     # 5. Save submission output
     sub_path = submission_builder.save(cfg.submission_path)
@@ -119,6 +144,7 @@ def main() -> None:
         "total_questions": len(submission_builder.answers),
         "submission_file": str(sub_path),
         "architecture": submission_builder.architecture_summary,
+        "metrics": evaluation_metrics,
         "sample_answers": [a.to_dict() for a in submission_builder.answers[:2]],
     }
     with open(report_path, "w", encoding="utf-8") as f:

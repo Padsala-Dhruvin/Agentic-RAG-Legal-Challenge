@@ -28,7 +28,7 @@ class InMemoryVectorStore:
     mode in use is always reported explicitly via `self.backend`.
     """
 
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2") -> None:
+    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2", config: Optional[EnvConfig] = None) -> None:
         self.chunks: List[LegalChunk] = []
         self.backend = "none"
         self.model = None
@@ -36,6 +36,12 @@ class InMemoryVectorStore:
         # TF-IDF fallback state
         self.vectorizer = None
         self.tfidf_matrix = None
+
+        if config is not None and not config.use_dense_embeddings:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            self.vectorizer = TfidfVectorizer(stop_words="english", max_features=10000)
+            self.backend = "sparse_tfidf"
+            return
 
         try:
             from sentence_transformers import SentenceTransformer
@@ -115,7 +121,7 @@ class HybridIndexer:
 
         # Dual-mode vector store setup
         self.cloud_store = TurbopufferStore(config=self.cfg)
-        self.local_store = InMemoryVectorStore() if not self.cloud_store.is_active() else None
+        self.local_store = InMemoryVectorStore(config=self.cfg) if not self.cloud_store.is_active() else None
         self.cohere_client = None
 
         if self.cfg.cohere_api_key and self.cloud_store.is_active():

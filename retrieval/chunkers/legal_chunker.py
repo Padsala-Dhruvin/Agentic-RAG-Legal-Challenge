@@ -15,7 +15,6 @@ from retrieval.loaders.ingested_corpus_loader import LoadedDocument, TextBlock
 
 logger = logging.getLogger(__name__)
 
-
 class LegalChunker(BaseChunker):
     """Slices LoadedDocuments into 3 specialized representations (`title_page`, `section`, `page_anchor`)."""
 
@@ -40,7 +39,7 @@ class LegalChunker(BaseChunker):
             pages=[1],
             metadata={"doc_type": doc.metadata.get("doc_type", "unknown")},
         )]
-
+    
     def _chunk_sections(self, doc: LoadedDocument) -> List[LegalChunk]:
         """Representation B: Bounded heading-to-heading section windows."""
         chunks = []

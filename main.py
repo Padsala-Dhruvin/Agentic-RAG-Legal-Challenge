@@ -5,7 +5,6 @@ Master CLI Entry Point for the Agentic RAG Legal Challenge (`Phase 8.1 & 8.3`).
 Provides unified command-line flags to ingest documents, evaluate benchmarks,
 and package the final repository into `code_archive.zip` for competition submission.
 """
-
 import argparse
 import logging
 import os
