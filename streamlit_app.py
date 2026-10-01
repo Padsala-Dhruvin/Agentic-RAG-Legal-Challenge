@@ -31,8 +31,8 @@ def load_pipeline() -> LegalHybridRAGPipeline:
         use_dense_embeddings=False,
         enable_rerank=False,
         enable_final_rerank=False,
-        llm_retry_attempts=1,
-        llm_timeout_seconds=10.0,
+        llm_retry_attempts=max(2, config.llm_retry_attempts),
+        llm_timeout_seconds=config.ui_llm_timeout_seconds,
         mock_llm=not config.ui_use_cloud_llm,
     )
     ingest_dir = Path("ingestion/test_ingest_output")

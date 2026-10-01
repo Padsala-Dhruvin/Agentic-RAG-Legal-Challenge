@@ -49,6 +49,7 @@ class EnvConfig:
     llm_cache_path: str
     llm_retry_attempts: int
     llm_timeout_seconds: float
+    ui_llm_timeout_seconds: float
     groundedness_min_overlap: float
     ui_use_cloud_llm: bool
     mock_llm: bool
@@ -96,6 +97,7 @@ class EnvConfig:
             llm_cache_path=os.getenv("LEGAL_LLM_CACHE_PATH", ".cache/llm_responses.json"),
             llm_retry_attempts=int(os.getenv("LEGAL_LLM_RETRY_ATTEMPTS", "2")),
             llm_timeout_seconds=float(os.getenv("LEGAL_LLM_TIMEOUT_SECONDS", "15")),
+            ui_llm_timeout_seconds=float(os.getenv("LEGAL_UI_LLM_TIMEOUT_SECONDS", "60")),
             groundedness_min_overlap=float(os.getenv("LEGAL_GROUNDEDNESS_MIN_OVERLAP", "0.12")),
             ui_use_cloud_llm=_as_bool(os.getenv("LEGAL_UI_USE_CLOUD_LLM"), False),
             mock_llm=_as_bool(os.getenv("LEGAL_RAG_SMOKE_MOCK_LLM"), False),

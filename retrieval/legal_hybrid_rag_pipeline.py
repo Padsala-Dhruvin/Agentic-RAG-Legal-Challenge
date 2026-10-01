@@ -242,7 +242,12 @@ class LegalHybridRAGPipeline(BaseLegalPipeline):
                     if self._is_grounded(raw_response, chunks):
                         return raw_response, citations
             except Exception as e:
-                logger.warning("Cloud LLM synthesis failed (%s). Falling back to local extractive.", e)
+                logger.warning("Cloud LLM synthesis failed (%s).", e)
+                if self.cfg.ui_use_cloud_llm:
+                    return f"Cloud LLM unavailable: {e}", citations
+
+        if self.cfg.ui_use_cloud_llm:
+            return "Cloud LLM did not return a valid grounded response.", citations
 
         # Mode B: Local Extractive Fallback (Offline Mode)
         top_chunk = chunks[0]
